@@ -9,7 +9,7 @@ import org.springframework.boot.context.web.SpringBootServletInitializer;
  *
  * @author Scott Hendrickson
  */
-public class FestivalServletInitializer extends SpringBootServletInitializer {
+public class ArtistServletInitializer extends SpringBootServletInitializer {
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
