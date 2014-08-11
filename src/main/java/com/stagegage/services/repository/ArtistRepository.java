@@ -1,100 +1,94 @@
 package com.stagegage.services.repository;
 
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.exceptions.DriverException;
-import com.datastax.driver.core.querybuilder.Assignment;
-import com.datastax.driver.core.querybuilder.QueryBuilder;
-import com.stagegage.services.dto.ArtistDto;
-import com.stagegage.services.repository.tables.ArtistByNameRow;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cassandra.core.CqlTemplate;
-import org.springframework.cassandra.core.RowMapper;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Repository;
 
+import com.mongodb.*;
+import com.stagegage.services.dto.ArtistDto;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Created by Scott on 7/12/14.
  *
  * @author Scott Hendrickson
  */
-@Repository
 @Configuration
-@PropertySource(value = { "classpath:cassandra.properties" })
 public class ArtistRepository {
-
-    @Autowired
-    private CqlTemplate template;
 
     @Autowired
     private Environment env;
 
+    private MongoConfig dbConfig;
+    private DB db;
+    private DBCollection artists;
 
-    public List<ArtistDto> getAllArtists() {
-        String select = QueryBuilder.select("id", "name", "genres").from("artists_by_name").toString();
-        List<ArtistByNameRow> artistByNameRows = template.query(select, new RowMapper<ArtistByNameRow>() {
+    public ArtistRepository() {
+        dbConfig = new MongoConfig();
 
-            @Override
-            public ArtistByNameRow mapRow(Row row, int i) throws DriverException {
-                return new ArtistByNameRow(
-                        row.getUUID("id"),
-                        row.getString("name"),
-                        row.getSet("genres", String.class)
-                );
-            }
-        });
+        this.db = dbConfig.createDB();
+        if(db == null)
+            System.out.println("Could not create DB");
+        this.artists = db.getCollection("artists");
 
-        return ArtistByNameRow.toDto(artistByNameRows);
+        // Make sure connection is ok
+        db.getStats();
     }
 
-    public List<ArtistDto> getArtists(String genre) {
+    public List<ArtistDto> getAllArtists() {
+        DBCursor cursor = artists.find();
 
-        return null;
+        return getDtosFromCursor(cursor);
+    }
+
+    private List<ArtistDto> getDtosFromCursor(DBCursor cursor) {
+        List<ArtistDto> artistDtos = new ArrayList<ArtistDto>();
+        try {
+            while(cursor.hasNext()) {
+                DBObject artist = cursor.next();
+                ArtistDto artistDto = ArtistDto.toArtistDto(artist);
+
+                // Clean up any prior mistakes
+                // TODO: make these asynch requests
+                if(artistDto.getName() == null) {
+                    artists.remove(artist);
+                    continue;
+                }
+
+                artistDtos.add(artistDto);
+            }
+        } finally {
+            cursor.close();
+        }
+        return artistDtos;
     }
 
     public ArtistDto createArtist(ArtistDto artistDto) {
-        String insert = QueryBuilder.insertInto(env.getProperty("cassandra.keyspace"), "artists_by_name")
-                .value("id", artistDto.getId())
-                .value("name", artistDto.getName())
-                .value("genres", artistDto.getGenres())
-                .toString();
+        // True for upsert, false for multi. We dont need to update all, as only one will match anyway
+        artists.update(artistDto.toDBO(), artistDto.toDBO(), true, false);
 
-        template.execute(insert);
         return artistDto;
     }
 
     public ArtistDto addArtistGenre(String name, String genre) {
-        Assignment add = QueryBuilder.add("genres", genre);
-        String update = QueryBuilder.update(env.getProperty("cassandra.keyspace"), "artists_by_name")
-                                    .with(add)
-                                    .where(QueryBuilder.eq("name", name)).toString();
-        // Write new genre to artist
-        template.execute(update);
+        Set<String> genres = new HashSet<String>();
+        genres.add(genre);
 
-        // Now read out updated artist
-        return getArtist(name);
+        // TODO: Eliminate double query
+        artists.update(new BasicDBObject("name", name), new ArtistDto(name, genres).toUpdateDBO());
+
+        return ArtistDto.toArtistDto(artists.findOne(new BasicDBObject("name", name)));
     }
 
     public ArtistDto getArtist(String name) {
-        String select = QueryBuilder.select("id", "name", "genres")
-                .from("artists_by_name")
-                .where(QueryBuilder.eq("name", name))
-                .toString();
-        List<ArtistByNameRow> artistByNameRows = template.query(select, new RowMapper<ArtistByNameRow>() {
+        return ArtistDto.toArtistDto(artists.findOne(new BasicDBObject("name", name)));
+    }
 
-            @Override
-            public ArtistByNameRow mapRow(Row row, int i) throws DriverException {
-                return new ArtistByNameRow(
-                        row.getUUID("id"),
-                        row.getString("name"),
-                        row.getSet("genres", String.class)
-                );
-            }
-        });
-
-        return ArtistByNameRow.toDto(artistByNameRows.get(0));
+    public ArtistDto deleteArtist(String artistName) {
+        return ArtistDto.toArtistDto(artists.findAndRemove(new BasicDBObject("name", artistName)));
     }
 }

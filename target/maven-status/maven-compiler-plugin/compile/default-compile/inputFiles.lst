@@ -1,8 +1,0 @@
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/dto/response/ArtistResponse.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/repository/cassandra/CassandraConfig.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/dto/ArtistDto.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/Main.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/resource/ArtistResource.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/repository/ArtistRepository.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/repository/tables/ArtistByNameRow.java
-/Users/Scott/dev/github/Artist-Service/src/main/java/com/stagegage/services/service/ArtistService.java

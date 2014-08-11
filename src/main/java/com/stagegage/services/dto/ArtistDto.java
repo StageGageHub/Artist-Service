@@ -1,7 +1,11 @@
 package com.stagegage.services.dto;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Created by Scott on 7/12/14.
@@ -10,24 +14,17 @@ import java.util.UUID;
  */
 public class ArtistDto {
 
-    private final UUID id;
     private final String name;
     private final Set<String> genres;
 
-    public ArtistDto(UUID id, String name, Set<String> genres) {
-        this.id = id;
+    public ArtistDto(String name, Set<String> genres) {
         this.name = name;
         this.genres = genres;
     }
 
     public ArtistDto(String name) {
-        this.id = UUID.randomUUID();
         this.name = name;
         genres = null;
-    }
-
-    public UUID getId() {
-        return id;
     }
 
     public String getName() {
@@ -36,6 +33,49 @@ public class ArtistDto {
 
     public Set<String> getGenres() {
         return genres;
+    }
+
+    public static ArtistDto toArtistDto(DBObject artistDBO) {
+        if(artistDBO == null)
+            return new ArtistDto(null, null);
+
+        String name = (String) artistDBO.removeField("name");
+        ArrayList<DBObject> genreDBOs = (ArrayList<DBObject>) artistDBO.removeField("genres");
+
+        Set<String> genres = new HashSet<String>();
+        if(genreDBOs != null) {
+            for (DBObject dbo : genreDBOs) {
+                genres.add((String) dbo.removeField("genre"));
+            }
+        }
+
+        return new ArtistDto(name, genres);
+    }
+
+    public DBObject toDBO() {
+        return new BasicDBObject()
+                .append("name", name)
+                .append("genres", getGenreArrayList());
+    }
+
+    public DBObject toUpdateDBO() {
+        // Recall updates must start ALL with $ modifiers if you don't wanna overwrite
+        DBObject genreDBO = new BasicDBObject("genres", new BasicDBObject("$each", getGenreArrayList()));
+        DBObject update = new BasicDBObject("$setOnInsert", new BasicDBObject("name", name));
+        update.put("$push", genreDBO);
+
+        return update;
+    }
+
+    private ArrayList<DBObject> getGenreArrayList() {
+        ArrayList<DBObject> genreDBOArray = new ArrayList<DBObject>();
+        if(genres != null) {
+            for (String genre : genres) {
+                genreDBOArray.add(new BasicDBObject("genre", genre));
+            }
+        }
+
+        return genreDBOArray;
     }
 
 }

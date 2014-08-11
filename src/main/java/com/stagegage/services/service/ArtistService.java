@@ -25,20 +25,26 @@ public class ArtistService {
     }
 
 
+    public ArtistDto getArtist(String name) {
+
+        return artistRepository.getArtist(name);
+    }
+
+
     public ArtistDto createArtist(String name) {
 
         return artistRepository.createArtist(new ArtistDto(name));
     }
 
 
-    public ArtistDto addGenreToArtist(String name, String genre) {
+    public ArtistDto deleteArtist(String artistName) {
 
-        return artistRepository.addArtistGenre(name, genre);
+        return artistRepository.deleteArtist(artistName);
     }
 
 
-    public ArtistDto getArtist(String name) {
+    public ArtistDto addGenreToArtist(String name, String genre) {
 
-        return artistRepository.getArtist(name);
+        return artistRepository.addArtistGenre(name, genre);
     }
 }

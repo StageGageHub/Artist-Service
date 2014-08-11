@@ -48,4 +48,11 @@ public class ArtistResource {
 
         return ArtistResponse.getResponse(dto);
     }
+
+    @RequestMapping(value = "/{artistName}", method = RequestMethod.DELETE)
+    public ArtistResponse deleteArtist(@PathVariable("artistName") String artistName) {
+        ArtistDto dto = artistService.deleteArtist(artistName);
+
+        return ArtistResponse.getResponse(dto);
+    }
 }
